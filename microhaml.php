@@ -1,129 +1,132 @@
 <?php
-# micro haml for starship framework
 
-function haml($src, $nice = false){
-  $list['html'] = array();
-  $list['php'] = array();
-  $list['element'] = array();
-  $html = NULL;
-  $regex = array(
-    'element' => '/^[%#\.\=\-]/',
-    'code' => '/^%' . '([^ .#\(=\-]+)' . '.*$/',
-    'attr' => '/^[^\(=\-]+' . '\(([^\)]+)\)' . '.*$/',
-    'ids' => '/^[^ \.#\(=\-]*' . '([\.#][^ \(=]*).*$/',
-    'text' => '/^[^ \(=\-]+(\([^\)]*\))? (.*)$/',
-    'php' => '/^([^ \(]+(\([^\)]*\))?)?([=\-]) (.*)$/',
-    'block' => '/^(if|while|do|for|foreach|switch|else).*$/',
-    'doctype' => '/^\!\!\!( .*)?/',
-    'comment' => '/^\/.*/',
-  );
-  $src = str_replace("\r", '', $src);
-  $lines = explode("\n", $src. "\n");
+# Micro Haml
+# Convert haml template to phtml.
+# Unumin 2012
 
-  # proccess lines
-  foreach ($lines as $n => $line){
-    $code = NULL;
-    $attr = NULL;
-    $ids = array('haml'=>NULL, 'html'=>NULL, 'all'=>NULL, '.'=>NULL, '#'=>NULL,);
-    $php = NULL;
-    $text = NULL;
-    $opening = NULL;
-    $closing = NULL;
-    $list['element'][$n] = NULL;
-    $bracket = NULL;
-    $indent = intval(strlen(preg_replace('/[^ ].*/', '', $line)) / 2);
-    $line = trim($line);
+class Microhaml {
 
-    # it's element
-    if(preg_match($regex['element'], $line)){
+  const REGEX_ELEMENT = '/^[%#\.\=\-].*$/';
+  const REGEX_COMMENT = '/^\/.*$/';
+  const REGEX_DOCTYPE = '/^\!\!\!( .*)?$/';
+  const REGEX_CODE    = '/^%([a-z0-9]+).*$/i';
+  const REGEX_ATTR    = '/^[^\(=\-]+\(([^\)]+)\).*$/';
+  const REGEX_STYLE   = '/^[^ \.#\(=\-]*([\.#][^ \(=]*).*$/';
+  const REGEX_TEXT    = '/^[^ \(=\-]+(\([^\)]*\))? (.*)$/';
+  const REGEX_PHP     = '/^([^ \(]+(\([^\)]*\))?)?([=\-]) (.*)$/';
+  const REGEX_BLOCK   = '/^(if|while|do|for|foreach|switch|else).*$/';
 
-      # get code prefixed % (body, span...)
-      if (preg_match($regex['code'], $line))
-        $code = preg_replace($regex['code'], '\1', $line);
 
-      # get element's attributes (value=, title=...)
-      if (preg_match($regex['attr'], $line))
-        $attr = preg_replace($regex['attr'], ' \1', $line);
-
-      # get class and id prefixed [.#]
-      if (preg_match($regex['ids'], $line)){
-        if (!$code) $code = 'div';
-        $ids['all'] = preg_replace($regex['ids'], ' \1', $line);
-        $ids['all'] = preg_split('/([.#])/', $ids['all'], NULL, PREG_SPLIT_DELIM_CAPTURE);
-        foreach($ids['all'] as $k => $v){
-          if (!trim($v, ' .#]')) continue;
-          $ids[$ids['all'][$k-1]][] = trim($v, '-');
-        }
-        if (is_array($ids['.']))
-          $ids['html'] .= ' class="' . implode(' ', $ids['.']) . '"';
-        if (is_array($ids['#']))
-          $ids['html'] .= ' id="'    . implode(' ', $ids['#']) . '"';
-      }
-
-      # get text
-      if (preg_match($regex['text'], $line))
-        $text = preg_replace($regex['text'], '\2', $line);
-
-      # save element
-      $list['element'][$n] = $code;
-      if ($code)
-        $opening = '<' . $code . $attr . $ids['html'] . '>';
-      # php
-      if (preg_match($regex['php'], $line)){
-        $php = preg_replace($regex['php'], '\4', $line);
-        $mark = preg_replace($regex['php'], '\3', $line);
-        if ($mark == '=')
-          $opening .= '<?php echo ' . $php . '; ?>';
-        if ($mark == '-'){
-          if(preg_match($regex['block'], $php)){
-            $bracket = '{';
-          }
-          $opening .= '<?php ' . $php . $bracket. ' ?>';
-        }
-      }
-    }
-
-    # it's doctype
-    elseif(preg_match($regex['doctype'], $line) && $n == 0)
-      $text = '<!DOCTYPE html>';
-
-    # it's comment
-    elseif(preg_match($regex['comment'], $line))
-      $text = "<?php /$line ?>";
-
-    # it's text
-    else $text = $line;
-
-    # closing
-    $max = max(key(array_slice($list['html'], -1, 1, true)), key(array_slice($list['php'], -1, 1, true))+1);
-    for ($j = 0; $j <= $max; $j++){
-      if ($indent > $j) continue;
-      $spaces = '';
-      $newline = '';
-      if ($nice){
-        for ($i=0; $i<$j; $i++) $spaces .= '  ';
-        $newline = "\n";
-      }
-      if (isset($list['html'][$j]) && isset($list['element'][$list['html'][$j]]))
-        $closing = $spaces . "</" . $list['element'][$list['html'][$j]] . ">" . $newline . $closing;
-      if (isset($list['php'][$j]))
-        $closing = $spaces . "<?php } ?>" . $newline . $closing;
-    }
-
-    # remove closed from lists
-    $list['html'] = array_slice($list['html'], 0, $indent, true);
-    $list['php'] = array_slice($list['php'], 0, $indent, true);
-
-    # output
-    $html .= $closing;
-    if ($nice) for ($i=0; $i<$indent; $i++) $html .= '  ';
-    $html .= $opening;
-    $html .= $text . "\n";
-
-    # add opened to lists
-    $list['html'][$indent] = $n; 
-    if (isset($bracket)) $list['php'][$indent] = true;
+  # ---------------------------------------------
+  # parseFile
+  # ---------------------------------------------
+  static public function parseFile($file){
+    return self::parse(file_get_contents($file));
   }
-  #$html = preg_replace('/\?\><\?php/', '', $html);
-  return trim($html, " \n");
+
+  # ---------------------------------------------
+  # parse
+  # ---------------------------------------------
+  static public function parse($source){
+    $source = str_replace("\r", '', $source);
+    $lines = explode("\n", $source . "\n");
+    $indent = 0;
+    $output = null;
+    $closing = array();
+  
+    # proccess lines
+    foreach ($lines as $n => $line){
+      $indentPrev = $indent;
+      $indent = (strlen($line) - strlen(ltrim($line))) / 2;
+      $indentSpaces = str_repeat('  ', $indent);
+      $indentJump = $indentPrev - $indent[$n - 1]; 
+      $line = trim($line);
+
+      # closing
+      $closingLine = implode('', array_reverse(array_slice($closing, $indent)));
+      $closing = array_slice($closing, 0, $indent);
+
+      # get element
+      if (preg_match(self::REGEX_ELEMENT, $line)){
+        $element = self::getElement($line);
+        $line = $element[0];
+        $closing[$indent] = $element[1];
+      }
+
+      # get comment
+      elseif (preg_match(self::REGEX_COMMENT, $line))
+        $line = "<?php /$line ?>";
+
+      # get doctype
+      elseif (preg_match(self::REGEX_DOCTYPE, $line))
+        $line = '<!DOCTYPE html>';
+
+      # format template
+      $output .= $closingLine . "\n" . $indentSpaces . $line;
+    }
+
+    return trim($output);
+  }
+
+  # ---------------------------------------------
+  # getElement
+  # ---------------------------------------------
+  static public function getElement($line){
+    $attr = $code = $php = $mark = $output = $closing = null;
+    $style = $styleAll = $styleClass = $styleId = null;
+
+    # get code prefixed % (body, span...)
+    if (preg_match(self::REGEX_CODE, $line))
+      $code = preg_replace(self::REGEX_CODE, '\1', $line);
+
+    # get element's attributes (value=, title=...)
+    if (preg_match(self::REGEX_ATTR, $line))
+      $attr = preg_replace(self::REGEX_ATTR, ' \1', $line);
+
+    # get class and id prefixed [.#]
+    if (preg_match(self::REGEX_STYLE, $line)){
+      if (!$code)
+        $code = 'div';
+      $styleAll = preg_replace(self::REGEX_STYLE, ' \1', $line);
+      $styleAll = preg_split('/([.#])/', $styleAll, NULL, PREG_SPLIT_DELIM_CAPTURE);
+      for ($i = 1; $i < count($styleAll); $i += 2){
+        if ($styleAll[$i] == '.')
+          $styleClass[] = $styleAll[$i + 1];
+        elseif ($styleAll[$i] == '#')
+          $styleId[] = $styleAll[$i + 1];
+      }
+      if (is_array($styleClass))
+        $style .= ' class="' . implode(' ', $styleClass) . '"';
+      if (is_array($styleId))
+        $style .= ' id="'    . implode(' ', $styleId) . '"';
+    }
+
+    # format html
+    if ($code){
+      $output = '<' . $code . $attr . $style . '>';
+      $closing = "</$code>";
+    }
+
+    # get text
+    if (preg_match(self::REGEX_TEXT, $line))
+      $output .= preg_replace(self::REGEX_TEXT, '\2', $line);
+
+    # php
+    if (preg_match(self::REGEX_PHP, $line)){
+      $php = preg_replace(self::REGEX_PHP, '\4', $line);
+      $mark = preg_replace(self::REGEX_PHP, '\3', $line);
+      if ($mark == '=')
+        $output .= '<?php echo htmlspecialchars(' . $php . ', ENT_QUOTES); ?>';
+      if ($mark == '-'){
+        if(preg_match(self::REGEX_BLOCK, $php)){
+          $php .= '{';
+          $closing = '<?php } ?>' . $closing;
+        }
+        $output .= "<?php $php ?>";
+      }
+    }
+
+    return array($output, $closing);
+  }
+
 }

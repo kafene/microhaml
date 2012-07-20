@@ -1,0 +1,18 @@
+!!!
+%html(lang="en")
+  %head
+    %title= $title
+  %body(rel="box")
+    %h1= $title
+    .page
+      - foreach ($list as $item)
+        %ul.item
+          %li= $item
+      .logo
+      /comment
+      %p= $content
+      %a(href='') link
+    .footer
+      %a(href="http://github.com/unu")
+        github
+
