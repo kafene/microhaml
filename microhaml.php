@@ -39,7 +39,6 @@ class Microhaml {
       $indentPrev = $indent;
       $indent = (strlen($line) - strlen(ltrim($line))) / 2;
       $indentSpaces = str_repeat('  ', $indent);
-      $indentJump = $indentPrev - $indent[$n - 1]; 
       $line = trim($line);
 
       # closing
