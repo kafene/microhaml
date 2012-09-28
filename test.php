@@ -1,25 +1,32 @@
 <?php
 
-require_once('microhaml.php');
-include_once('ndebugger.php');
-
+require_once 'ndebugger.php';
 NDebugger::enable();
-ob_start();
 
-$haml = file_get_contents('test.haml');
-$php = Microhaml::parseFile('test.haml');
-print '<pre>' . $haml . '</pre>' .
-      '<pre>' . htmlspecialchars($php) . '</pre>';
+require_once 'microhaml.php';
+
+define('TEST', 'test.haml');
+
+function h($s){
+  return htmlspecialchars($s);
+}
 
 $title = 'Hello, world.';
 $list = array('one', 'two');
 $content = 'What a nice day.';
-eval('?><div class="out">' . $php . '</div>');
-$page = ob_get_clean();
 
 ?>
+<h3>Haml</h3>
+<pre><?php echo h(file_get_contents(TEST))?></pre>
 
-<?=$page?>
+<h3>Html</h3>
+<pre><?php echo h(Microhaml::parseFile(TEST))?></pre>
+
+<h3>Html with expanded style</h3>
+<pre><?php echo h(Microhaml::parseFile(TEST, true))?></pre>
+
+<h3>Output</h3>
+<div class="out"><?php echo eval('?>' . Microhaml::parseFile(TEST))?></pre>
 
 <style>
   html {background-color: #eaeaea; }

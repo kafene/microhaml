@@ -1,8 +1,8 @@
 <?
 
 /**
- * Micro Haml
- * Convert haml template to phtml.
+ * Converts haml template to phtml.
+ * http://github.com/unu/microhaml
  * @author unumin
  */
 
@@ -21,17 +21,19 @@ class Microhaml
   /**
    * Converts haml file to html.
    * @param string Source file
+   * @param bool Expanded style
    * @return string Html output
    */
-  static fn parseFile(file)
-    return self.parse(file_get_contents(file))
+  static fn parseFile(file, expanded = false)
+    return self.parse(file_get_contents(file), expanded)
 
   /**
    * Converts haml source to html.
    * @param string Haml input
+   * @param bool Expanded style
    * @return string Html output
    */
-  static fn parse(source)
+  static fn parse(source, expanded = false)
     source = str_replace("\r", '', source)
     lines = explode("\n", source . "\n")
     indent = 0
@@ -50,7 +52,10 @@ class Microhaml
       newClosing = []
       foreach (closing as key: item)
         if (key >= indent)
-          closingLine = item . closingLine
+          if (expanded && n - 1 > item[1])
+            closingLine = "\n" . str_repeat(' ', key) . item[0] . closingLine
+          else
+            closingLine = item[0] . closingLine
         else
           newClosing[key] = item
       closing = newClosing
@@ -59,7 +64,7 @@ class Microhaml
       if (preg_match(self.REGEX_ELEMENT, line))
         element = self.getElement(line)
         line = element[0]
-        closing[indent] = element[1]
+        closing[indent] = [element[1], n]
 
       # get comment
       elseif (preg_match(self.REGEX_COMMENT, line))
