@@ -1,10 +1,12 @@
 <?
 
-# Micro Haml
-# Convert haml template to phtml.
-# Unumin 2012
+/**
+ * Micro Haml
+ * Convert haml template to phtml.
+ * @author unumin
+ */
 
-class Microhaml 
+class Microhaml
 
   const REGEX_ELEMENT = '/^[%#\.\=\-].*$/'
   const REGEX_COMMENT = '/^\/.*$/'
@@ -16,22 +18,26 @@ class Microhaml
   const REGEX_PHP     = '/^([^ \(]+(\([^\)]*\))?)?([=\-]) (.*)$/'
   const REGEX_BLOCK   = '/^(if|while|do|for|foreach|switch|else).*$/'
 
-  # ---------------------------------------------
-  # parseFile
-  # ---------------------------------------------
+  /**
+   * Converts haml file to html.
+   * @param string Source file
+   * @return string Html output
+   */
   static fn parseFile(file)
     return self::parse(file_get_contents(file))
 
-  # ---------------------------------------------
-  # parse
-  # ---------------------------------------------
+  /**
+   * Converts haml source to html.
+   * @param string Haml input
+   * @return string Html output
+   */
   static fn parse(source)
     source = str_replace("\r", '', source)
     lines = explode("\n", source . "\n")
     indent = 0
     output = null
     closing = array()
-  
+
     # proccess lines
     foreach (lines as n => line)
       indentPrev = indent
@@ -62,9 +68,11 @@ class Microhaml
 
     return trim(output)
 
-  # ---------------------------------------------
-  # getElement
-  # ---------------------------------------------
+  /**
+   * Converts haml line to html element.
+   * @param string Haml line
+   * @return array Html line and closing tags
+   */
   static fn getElement(line)
     attr = code = php = mark = output = closing = null
     style = styleAll = styleClass = styleId = null
@@ -116,4 +124,3 @@ class Microhaml
         output .= '<?php ' . php . ' ?>'
 
     return array(output, closing)
-
