@@ -41,13 +41,19 @@ class Microhaml{
     # proccess lines
     foreach ($lines as $n => $line){
       $indentPrev = $indent;
-      $indent = (strlen($line) - strlen(ltrim($line))) / 2;
-      $indentSpaces = str_repeat('  ', $indent);
-      $line = trim($line);
+      $indent = (mb_strlen($line) - mb_strlen(ltrim($line)));
+      $indentSpaces = mb_substr($line, 0, $indent);
+      $line = ltrim($line);
 
       # closing
-      $closingLine = implode('', array_reverse(array_slice($closing, $indent)));
-      $closing = array_slice($closing, 0, $indent);
+      $closingLine = null;
+      $newClosing = array();
+      foreach ($closing as $key => $item){
+        if ($key >= $indent){
+          $closingLine = $item . $closingLine;}
+        else{
+          $newClosing[$key] = $item;}}
+      $closing = $newClosing;
 
       # get element
       if (preg_match(self::REGEX_ELEMENT, $line)){

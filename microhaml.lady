@@ -24,7 +24,7 @@ class Microhaml
    * @return string Html output
    */
   static fn parseFile(file)
-    return self::parse(file_get_contents(file))
+    return self.parse(file_get_contents(file))
 
   /**
    * Converts haml source to html.
@@ -36,31 +36,37 @@ class Microhaml
     lines = explode("\n", source . "\n")
     indent = 0
     output = null
-    closing = array()
+    closing = []
 
     # proccess lines
-    foreach (lines as n => line)
+    foreach (lines as n: line)
       indentPrev = indent
-      indent = (strlen(line) - strlen(ltrim(line))) / 2
-      indentSpaces = str_repeat('  ', indent)
-      line = trim(line)
+      indent = (mb_strlen(line) - mb_strlen(ltrim(line)))
+      indentSpaces = mb_substr(line, 0, indent)
+      line = ltrim(line)
 
       # closing
-      closingLine = implode('', array_reverse(array_slice(closing, indent)))
-      closing = array_slice(closing, 0, indent)
+      closingLine = null
+      newClosing = []
+      foreach (closing as key: item)
+        if (key >= indent)
+          closingLine = item . closingLine
+        else
+          newClosing[key] = item
+      closing = newClosing
 
       # get element
-      if (preg_match(self::REGEX_ELEMENT, line))
-        element = self::getElement(line)
+      if (preg_match(self.REGEX_ELEMENT, line))
+        element = self.getElement(line)
         line = element[0]
         closing[indent] = element[1]
 
       # get comment
-      elseif (preg_match(self::REGEX_COMMENT, line))
+      elseif (preg_match(self.REGEX_COMMENT, line))
         line = '<?php /' . line . ' ?>'
 
       # get doctype
-      elseif (preg_match(self::REGEX_DOCTYPE, line))
+      elseif (preg_match(self.REGEX_DOCTYPE, line))
         line = '<!DOCTYPE html>'
 
       # format template
@@ -78,18 +84,18 @@ class Microhaml
     style = styleAll = styleClass = styleId = null
 
     # get code prefixed % (body, span...)
-    if (preg_match(self::REGEX_CODE, line))
-      code = preg_replace(self::REGEX_CODE, '\1', line)
+    if (preg_match(self.REGEX_CODE, line))
+      code = preg_replace(self.REGEX_CODE, '\1', line)
 
     # get element's attributes (value=, title=...)
-    if (preg_match(self::REGEX_ATTR, line))
-      attr = preg_replace(self::REGEX_ATTR, ' \1', line)
+    if (preg_match(self.REGEX_ATTR, line))
+      attr = preg_replace(self.REGEX_ATTR, ' \1', line)
 
     # get class and id prefixed [.#]
-    if (preg_match(self::REGEX_STYLE, line))
+    if (preg_match(self.REGEX_STYLE, line))
       if (!code)
         code = 'div'
-      styleAll = preg_replace(self::REGEX_STYLE, ' \1', line)
+      styleAll = preg_replace(self.REGEX_STYLE, ' \1', line)
       styleAll = preg_split('/([.#])/', styleAll, NULL, PREG_SPLIT_DELIM_CAPTURE)
       for (i = 1; i < count(styleAll); i += 2)
         if (styleAll[i] == '.')
@@ -108,19 +114,19 @@ class Microhaml
       closing = '</' . code . '>'
 
     # get text
-    if (preg_match(self::REGEX_TEXT, line))
-      output .= preg_replace(self::REGEX_TEXT, '\2', line)
+    if (preg_match(self.REGEX_TEXT, line))
+      output .= preg_replace(self.REGEX_TEXT, '\2', line)
 
     # php
-    if (preg_match(self::REGEX_PHP, line))
-      php = preg_replace(self::REGEX_PHP, '\4', line)
-      mark = preg_replace(self::REGEX_PHP, '\3', line)
+    if (preg_match(self.REGEX_PHP, line))
+      php = preg_replace(self.REGEX_PHP, '\4', line)
+      mark = preg_replace(self.REGEX_PHP, '\3', line)
       if (mark == '=')
         output .= '<?php echo htmlspecialchars(' . php . ', ENT_QUOTES); ?>'
       if (mark == '-')
-        if(preg_match(self::REGEX_BLOCK, php))
+        if(preg_match(self.REGEX_BLOCK, php))
           php .= '{'
           closing = '<?php } ?>' . closing
         output .= '<?php ' . php . ' ?>'
 
-    return array(output, closing)
+    return [output, closing]
