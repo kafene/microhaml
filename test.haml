@@ -5,8 +5,8 @@
   %body(rel="box")
     %h1= $title
     .page
-      - foreach ($list as $item)
-        %ul.item
+      %ul.item
+        - foreach ($list as $item)
           %li= $item
       .logo
       /comment
@@ -14,4 +14,3 @@
       %a(href='') link
     .footer
       %a(href="http://github.com/unu") github
-

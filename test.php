@@ -1,8 +1,5 @@
 <?php
 
-require_once 'ndebugger.php';
-NDebugger::enable();
-
 require_once 'microhaml.php';
 
 define('TEST', 'test.haml');
